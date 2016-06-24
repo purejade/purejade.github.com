@@ -5,7 +5,7 @@ date:   2016-06-24 16:47:29 +0800
 categories: javascript
 ---
 
-基本类库
+## 基本类库
 
 [jquery][jquery]:jQuery is a fast, small, and feature-rich JavaScript library.
 
@@ -38,7 +38,7 @@ DataTables is a plug-in for the jQuery Javascript library. It is a highly flexib
 
 [Typeahead][typeahead]: a flexible JavaScript library that provides a strong foundation for building robust typeaheads 
 
-图形类库：
+## 图形类库：
 [Progress Bar][progress-bar]:With ProgressBar.js, it's easy to create responsive and stylish progress bars for the web. 
 
 [D3][d3]: D3.js is a JavaScript library for manipulating documents based on data.
@@ -49,11 +49,11 @@ DataTables is a plug-in for the jQuery Javascript library. It is a highly flexib
 
 [Flat-ui][Flat-ui]:免费的WEB界面工具组件库
 
-打包工具:
+## 打包工具:
 browserify: Browserify lets you require('modules') in the browser by bundling up all of your dependencies.
 grunt: JavaScript世界的构建工具
 
-类库下载CDN:
+## 类库下载CDN:
 
 [BootCDN][bootcdn]: 稳定、快速、免费的开源项目 CDN 服务,收录了2000多个流行的开源项目
 
