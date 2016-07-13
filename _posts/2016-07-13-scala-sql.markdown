@@ -1,0 +1,67 @@
+---
+layout: post
+title:  "Scala 中Plain Sql使用以及遇到的问题 "
+date:   2016-07-13 16:47:29 +0800
+categories: scala
+---
+
+## Scala 中Plain Sql使用以及遇到的问题 
+
+Play框架从2.5之后重新开始正式支持Anorm，一个简单的方式来使用sql.[参考][anorm+play]
+
+使用Plain Sql数据库操作，主要包含三种方式
+
+假如存在User表，包含（user_id, name, phone, etc）
+
+### 第一种直接查询
+
+    sql"""
+        select name from user
+    """.as[String].list 
+	
+### 第二种查询 
+    
+    val sqlStr = "select name from user" 
+    Q.queryNA[String](sqlStr).list 
+	
+
+这两种主要是如果sql中需要传递参数，则第二种可以按照字符串先进行拼接，而第二种则包含两种情况，一种是拼接，一种是解析。
+    
+    getNameList(condition: String)(implicit sess:Session) = {
+        sql"""
+            select name from user where $condition
+            """.as[String].list 
+    }   
+
+上面写法是错误的，因为当传递的字符串用来拼接时需要用#$来表示，需要写成：
+    
+        
+        select name from user where #$condition
+        
+如果传递的字符串需要解析，如
+    
+        select name from user where username = $name 
+
+参考[slick+sql][slick+plain]：
+
+### 查询超过22个字段遇到的坑
+
+如果sql查询许多字段，比如超过22个。如果还是用上面两种方式，如会遇到如下的提示：
+    
+    java.lang.AssertionError: assertion failed: scala.<none> 
+    scala.MatchError: java.lang.AssertionError: assertion failed: scala.<none> (of class java.lang.AssertionError)  
+
+主要问题是： 经过测试，发现主要和列的长度有关系。如果超过22列，则报错；主要原因是tuple参数长度的限制，最多22个,[参考][stackoverflow]。
+
+发现了这个bug之后，发现tuple参数不能超过22个，因此，我们可以用一个case class的类型来表示返回的类型，并通过implicit的方式将结果转换成所表示的类型。如下
+    
+    case class Supplier(id: Int, name: String, street: String, city: String, state: String, zip: String)
+    // Result set getters
+    implicit val getSupplierResult = GetResult(r => Supplier(r.nextInt, r.nextString, r.nextString, r.nextString, r.nextString, r.nextString))    
+    val table = "coffees"
+    sql"select * from #$table where name = $name".as[Coffee].headOption  
+ 
+
+[anorm+play]: https://www.playframework.com/documentation/2.5.x/ScalaAnorm 
+[slick+plain]: http://slick.lightbend.com/doc/3.0.0/sql.html 
+[stackoverflow]: http://stackoverflow.com/questions/4152223/why-are-scala-functions-limited-to-22-parameters  
