@@ -5,8 +5,6 @@ date:   2016-07-13 16:47:29 +0800
 categories: scala
 ---
 
-## Scala 中Plain Sql使用以及遇到的问题 
-
 Play框架从2.5之后重新开始正式支持Anorm，一个简单的方式来使用sql.[参考][anorm+play]
 
 使用Plain Sql数据库操作，主要包含三种方式

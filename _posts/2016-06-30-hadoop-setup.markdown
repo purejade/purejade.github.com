@@ -5,8 +5,6 @@ date:   2016-06-30 18:47:29 +0800
 categories: bigdata
 ---
 
-## MAC+Intellij IDEA搭建Hadoop开发环境
-
 ### 环境配置 
 MAC笔记本 + 8G内存 + Intel i5 + Hadoop2.7.2 + Intellij IDEA
 (本来想要使用cloudera hadoop vm来配置的，这个至少4个处理器和8G内存)

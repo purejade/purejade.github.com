@@ -1,6 +1,6 @@
 ---
 layout: post
-title:  "frequent used javascript lib!"
+title:  "Frequent Used Javascript Lib!"
 date:   2016-06-24 16:47:29 +0800
 categories: javascript
 ---
