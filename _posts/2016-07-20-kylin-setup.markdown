@@ -23,6 +23,8 @@ categories: big data
 
 如何配置见[hive-metadata-config][hive-metadata-config]
 
+hive mysql connector url: https://dev.mysql.com/downloads/file/?id=462849 
+
 mysql配置中可能出现的问题 
 
 http://blog.csdn.net/cjfeii/article/details/49363653 
@@ -108,4 +110,4 @@ Kylin 官网 http://kylin.apache.org/
 Kylin环境搭建和操作: http://www.cnblogs.com/shengshengwang/p/5477220.html
 
 [hadoop-setup]: http://purejade.github.io/bigdata/hadoop-setup/
-[hive-metadata-config]: http://blog.csdn.net/x_i_y_u_e/article/details/46845609， 
+[hive-metadata-config]: http://blog.csdn.net/x_i_y_u_e/article/details/46845609 
