@@ -1,0 +1,192 @@
+---
+layout: post
+title:  "Druid系列翻译与实践——关于Druid"
+date:   2016-11-01 11:47:29 +0800
+categories: druid
+---
+
+Druid 是一个开源的面向分析型数据存储，主要用来解决基于事件数据的智能分析(OLAP，BI)。Druid 提供了低延迟的数据注入（data ingestion)、灵活的数据查询以及快速的聚类聚合。目前存在的Druid 部署已经扩展到处理TB级的事件和PT极的数据。Druid 是最常用的面向用户分析型的应用。
+
+## 关键特性
+
+#### 亚秒级的OLAP查询
+
+​	Druid 列式存储以及反向索引能够支持复杂的多维过滤索引，以及准确定位查询的内容。聚合和过滤都是毫秒级别的。
+
+#### 实时的流式注入
+
+​	传统的数据注入一般都是批量插入，实时注入数据一般需要 transactional lock 或者其它消耗会降低注入速率。Druid 利用附加大量数据集的无锁的注入，允许每秒同步注入和查询10000+事件。简单的说，就是延迟主要是事件从发生到传递到 Druid 的时间。
+
+#### 强大的分析型应用
+
+​	Druid 拥有大量的特性来支持多租户。强大的面向用户的分析型应用设计来支持数千个并发用户。
+
+#### 成本效益
+
+​	Druid 在规模上极具成本效益，并有大量特性来缩减成本，并提供了简单的配置开关来平衡成本和性能。
+
+#### 高可用性
+
+​	Druid 用于SaaS服务，支持向前支持（ Druid is used to back SaaS implementations that need to be up all the time）。Druid 支持滚动更新，以便您的数据在软件更新期间仍然可用和可查询。规模扩大和减少都不丢失数据。
+
+#### 可扩展性
+
+​	现有Druid部署每秒处理数万亿的事件，PB数据和数千个查询。
+
+
+
+## 应用场景
+
+组织已经部署 Druid 来分析广告技术，开发，网络流量，云安全，网站流量，财务和传感器数据。Druid 擅长以下场景：
+
+1. 你正在构建一个需要快速聚合和探索性分析的应用程序
+2. 你想去实时的分析数据
+3. 你有很多数据（万亿的事件，PB数据）
+4. 你需要一个没有单点故障的数据存储
+
+## 高级架构
+
+Druid 也受到了现存的分析型数据存储的启发，如 Google 的 [BigQuery/Dremel](http://static.googleusercontent.com/media/research.google.com/en/us/pubs/archive/36632.pdf) 和  [PowerDrill](http://vldb.org/pvldb/vol5/p1436_alexanderhall_vldb2012.pdf) 以及 搜索架构。Druid 索引数据创建了许多不可变视图，并存储在自定义的列式结构中（该结构为了聚类和过滤做了优化）。Drui d 集群中包含了不同类型的节点，每一个节点分配不同的任务。节点不需要部署在单个节点上，且许多节点在生产环境中可以协作。
+
+
+
+## 全面架构
+
+如果想要深入理解 Druid 架构，可以参考文章  [white paper](http://static.druid.io/docs/druid.pdf)
+
+![https://upload.wikimedia.org/wikipedia/commons/0/0f/Druid_Open-Source_Data_Store%2C_architecture%2C_DruidArchitecture3.svg](https://upload.wikimedia.org/wikipedia/commons/0/0f/Druid_Open-Source_Data_Store%2C_architecture%2C_DruidArchitecture3.svg)
+
+## 对比
+
+### Druid vs ElasticSearch
+
+Elasticsearch是基于Apache Lucene的搜索系统。它提供对无模式文档的全文搜索，并提供对原始事件级数据的访问。 Elasticsearch越来越多地支持分析和聚合。一些相关社区人士指出
+Elasticsearch中的数据提取和聚合的资源需求远远高于Druid的资源需求。
+
+Elasticsearch还不支持在摄取时间的数据汇总/上钻，这可以额外需要存储高达100倍的数据集。这导致Elasticsearch具有更大的存储要求。
+
+Druid专注于OLAP工作流。Druid以低成本优化了高性能（快速聚合和摄取），并支持广泛的分析操作。 Druid对结构化事件数据有一些基本的搜索支持，但不支持全文搜索。 Druid也不支持完全非结构化数据。通过定义Measures，可以在Druid中实现汇总和上钻（summarization/roll-up）。
+
+### Druid vs Key/Value Stores (HBase/Cassandra)
+
+Druid针对扫描和聚合进行了高度优化，它支持任意深入钻取到数据集。键/值存储中支持相同的功能有两种方式：
+
+1. 预计算可能的用户查询的所有排列
+
+   当预计算结果时，键是查询的确切参数，值是查询的结果。查询极快地返回，但是以灵活性为代价。因为ad-hoc探索式查询不可能与预计算每个可能的查询相一致。预计算所有ad-hoc查询的所有排列导致结果集指数级增长，与数据集的列数成指数相关性，另外对于复杂的真实世界数据集的预计算查询可能需要数小时的预处理时间。
+
+2. 限定范围扫描事件数据
+
+   使用键/值存储集合的另一种方法是使用事件的维度作为键，事件度量作为值。通过对此数据指定范围进行扫描来完成聚合。时间特定的数据库，如OpenTSDB使用这种方法。但有一个限制是，键/值存储模型不具有除前缀范围之外的任何种类的过滤的索引，其可以用于将查询过滤到度量和时间范围，但是不能解析复杂的条件来缩小要扫描的确切数据范围。当要扫描的行数很大时，此限制会大大降低性能。使用键/值存储也很难实现良好的局部性，因为大多数不支持将聚合下推到存储层。
+
+   对于任意探索数据（灵活数据过滤），Druid的自定义列格式支持ad-hoc查询，无需预先计算。该格式还支持对列进行快速扫描，这对于良好的聚合性能很重要。
+
+### Druid vs RedShift 
+
+如何比较
+
+考虑到差异性，RedShift是给予Amazon的ParAccel(Astian)开发的。除了性能差异性，还存在一些功能差异：
+
+1. 实时数据提取(real-time data ingestion)
+
+   因为Druid提供了对大量流数据的分析的优化，能够支持实时加载和聚类。通常的数据仓库包括列式存储仅支持批量导入数据，没有对流式分析做优化
+
+2. Druid 是一个面向读取的分析数据存储
+
+   Druid 写语义不全的，不支持full join(仅支持大表和小表之间的join)。而RedShift支持full join和insert/update等语义
+
+3. 数据分布模型
+
+   Druid 的数据分布是段（segment)式存储的，可以利用目前成熟存储方案，如S3或HDFS。规模可以自由扩大或者减少，不需要大量复制操作或停机时间;事实上，丢失任何数量的历史节点不会导致数据丢失，因为新的历史节点总是可以从底层存储中重新读取数据。相比之下，ParAccel的数据分布模型是基于散列的。扩展集群需要在节点之间重新散列数据，这使得难以在不停机的情况下执行。亚马逊的Redshift通过多步骤过程解决了这个问题：首先将集群设置为只读模式；其次将数据从群集复制到并行存在的新群集；最后将流量重定向到新群集
+
+4. 备份策略
+
+   Druid 采用基于段的数据分布，这意味着可以添加和重新平衡更多节点，而无需执行swap阶段。备份策略还使所有副本可用于查询。备份是自动完成的，对性能没有任何影响。ParAccel的基于散列的分布通常意味着复制是通过热备份进行的。这对您可以在不丢失数据的情况下丢失的节点数设置数字限制，并且此备份策略通常不允许热备份帮助共同承担查询负载。
+
+5. 索引策略
+
+   和列式存储一起，Druid使用索引结构来加速过滤查询执行。索引结构会增加存储开销（并使其更难以允许mutable），但它们还显着加快了查询速度。而ParAccel并没有使用索引策略。
+
+### Druid vs Spark 
+
+Druid和Spark是互补的解决方案，因为Druid可以在Spark中的加速OLAP查询。Spark是一个通用的集群计算框架，最初是围绕弹性分布式数据集（RDD）的概念设计的。 RDD通过在内存中持久化中间结果来实现数据重用，并使Spark能够为迭代算法提供快速计算。这对于诸如机器学习的工作流是特别有益的，这些工作流需要反复应用相同的操作，直到某些结果收敛为止。Spark的通用性使其非常适合作为处理（清洗或转换）数据的引擎。Spark提供了Spark SQL来查询数据，但与Hadoop非常类似，但查询延迟不是特定的交互式（sub-second）
+
+
+Druid的重点是极低延迟的查询，是能够为成千上万用户使用的应用程序提供动力的理想选择，每个查询必须足够快地返回，以便用户可以通过数据进行交互式探索。Druid 索引所有数据，可以充当Spark和您的应用程序之间的中间层。生成环境中典型安装是在 Spark 中处理数据，将处理后的数据加载入Druid来加速访问
+有关将Druid和Spark结合使用（包括两个系统的基准测试）的详细信息，请参阅：
+https://www.linkedin.com/pulse/combining-druid-spark-interactive-flexible-analytics-scale-butani
+
+### Druid vs SQL-on-Hadoop (Impala/Drill/Spark SQL/Presto)
+
+SQL-on-Hadoop引擎为各种数据格式和数据存储提供了一个执行引擎，并且许多可以将计算下推到Druid，同时为Druid提供一个SQL接口。为了直接比较技术和何时只使用其中之一，事情基本上取决于您的产品要求以及系统设计要做什么。
+Druid 设计目标：
+
+
+1）实时在线
+
+
+2）实时获取数据
+
+
+3）处理slice-n-dice样式ad-hoc查询
+
+SQL-on-Hadoop引擎通常避免使用Map/Reduce框架，而是直接从HDFS或者其它存储引擎中查询数据。这些引擎（包括Impala和Presto）可以与HDFS数据节点共存，并与它们协调以实现查询的数据局部性。这是什么意思呢？我们可以从三个方面来谈谈
+
+
+1）查询
+
+
+Druid segments 存储以自定义的列式结构存储数据。Segments可以作为查询的一部分直接扫描，每个Druid服务器计算一组最终在Broker级别合并的结果。这意味着在服务器之间传输的数据是查询和结果，所有计算都在内部作为Druid服务器的一部分完成。
+
+
+大多数SQL-on-Hadoop引擎负责底层存储层和存储格式的查询规划和执行。它们作为后台进程保持运行(忽略从Hadoop M/R中JVM 启动消耗)。一些（Impala / Presto）SQL-on-Hadoop引擎具有可在存储数据的地方运行的守护进程，从而几乎消除了网络传输成本。但仍存在与将数据从底层存储层拉入计算层相关联的一些等待时间开销（例如，工作时间），我们不知道这会对性能产生多大的影响。
+
+
+2）数据注入
+
+
+Druid被构建为允许实时获取数据。您可以摄取数据并在摄取后立即查询数据，事件在数据中反映的速度之间的延迟主要由将事件传递给Druid所需的时间决定。(数据读取速度)
+
+
+SQL-on-HDFS或其他后备存储中的数据在其数据摄取速率方面受到后备存储可使数据可用的速率的限制。通常，后备存储是数据可以快速获得的最大瓶颈。
+
+
+3）查询灵活性
+
+
+Druid的查询语言是相当低的水平，并映射到Druid如何在内部操作。尽管Druid可以与高级查询计划器（例如Plywood）结合，以支持大多数SQL查询和分析SQL查询（minus join大表之间的连接），但基本Druid比通用处理的Hadoop解决方案灵活性低。
+
+
+SQL-on-Hadoop支持具有完全连接(full join)的SQL样式查询。
+
+
+
+### Druid vs Parquet
+
+Parquet是一种列存储格式，设计与SQL-on-Hadoop引擎一起使用。 Parquet没有查询执行引擎，而是依靠外部源来从中提取数据。
+
+
+Druid的存储格式针对线性扫描进行了高度优化。虽然Druid支持嵌套数据，但Parquet的存储格式更加层次化，并且更多地设计用于二进制分块。在理论上，这应该导致在 Druid 更快的扫描。
+
+
+
+## Scale
+
+存在的生产Druid[[Existing production Druid clusters](http://www.marketwired.com/press-release/metamarkets-clients-analyzing-100-billion-programmatic-events-daily-on-track-surpass-2061596.htm)]集群已经扩展支持以下功能：
+
+1. 3T events/month
+2. 3M events/s 实时注入
+3. 100PB 数据
+4. 50 T events 
+5. 每秒支持数千用户数千查询
+6. 上万内核
+
+
+
+参考：
+
+[druid](http://druid.io/druid.html)
+
+[lpthread](http://www.cnblogs.com/lpthread/p/4519687.html)
+
+[chenyi888](http://blog.csdn.net/chenyi8888/article/details/45893247 ) 
