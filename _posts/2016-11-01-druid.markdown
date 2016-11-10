@@ -183,10 +183,9 @@ Druid的存储格式针对线性扫描进行了高度优化。虽然Druid支持�
 
 
 
-参考：
 
-[druid](http://druid.io/druid.html)
-
-[lpthread](http://www.cnblogs.com/lpthread/p/4519687.html)
-
-[chenyi888](http://blog.csdn.net/chenyi8888/article/details/45893247 ) 
+> 官网介绍 http://druid.io/druid.html 
+>
+> 博客翻译 http://www.cnblogs.com/lpthread/p/4519687.html  
+>
+> 博客翻译 http://blog.csdn.net/chenyi8888/article/details/45893247  
