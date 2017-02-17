@@ -1,0 +1,117 @@
+---
+layout: post
+title:  "ES实践"
+date:   2017-02-17 15:47:29 +0800
+categories: es
+---
+### elastic search [elasticsearch-5.0.0]
+
+下载：https://www.elastic.co/downloads/elasticsearch
+
+安装权限问题：无法使用root启动，[参考][https://discuss.elastic.co/t/why-is-it-elasticsearch-is-not-allowed-to-run-as-root/60413/4 ], 需要新建普通用户，支持java1.8+
+
+修改配置文件：elasticsearch-5.0.0/config/elasticsearch.yml
+
+```
+cluster.name: es-name
+node.name: es-node-1 
+network.host: localhost  #连接IP地址
+```
+
+
+
+### logstash [logstash-5.2.0]
+
+下载：https://www.elastic.co/downloads/logstash
+
+logstash 通过jdbc的方式连接Mysql，并导入到ES , 配置方式见[jdbc][https://www.elastic.co/guide/en/logstash/master/plugins-inputs-jdbc.html]
+
+```
+#周期性的访问mysql，并根据update_time获取更新
+input {
+  jdbc {
+    jdbc_connection_string => "jdbc:mysql://localhost:3306/testdb"
+    jdbc_user => "root"
+    jdbc_password => "root"
+    jdbc_driver_library => "/home/wjy/mysql-connector-java-5.1.40.jar"
+    jdbc_driver_class => "com.mysql.jdbc.Driver"
+    schedule => "* * * * *"   #cron调度执行
+    jdbc_default_timezone => "UTC"  #指定时区
+    statement => "select * from testtable where update_time > :sql_last_value order by update_time"
+    use_column_value => true
+    tracking_column => update_time
+  }
+}
+#将更新输出到ES中
+output {
+  stdout { codec => json_lines }
+  elasticsearch {
+    "hosts" => "localhost:9200"  #hosts
+    "index" => "test-migrate"   
+    "document_type" => "data"
+    "document_id" => "%{personid}"
+  }
+}
+```
+
+
+
+### 同步MYSQL 到 ES
+
+![image](https://qbox.io/img/blog/mysql-logstash1.png)
+
+支持add/update等操作，注意在mysql表中提供唯一标识字段和更新字段，但目前不支持delete操作
+
+
+
+### 查询
+
+[基于Transport查询](https://www.elastic.co/guide/en/elasticsearch/client/java-api/current/java-query-dsl.html)
+
+```
+Settings settings = Settings.builder()
+        .put("cluster.name", "cluster-name")
+        .put("client.transport.sniff", true).build();
+
+TransportClient client = new PreBuiltTransportClient(settings);
+
+int esPort = 9300;  //es client transport port
+String esIp = "localhost"; //es host ip
+try {
+  client.addTransportAddress(
+  new InetSocketTransportAddress(InetAddress.getByName(esIp), esPort));
+} catch (UnknownHostException e) {
+  e.printStackTrace();
+}
+QueryBuilder qb = queryStringQuery("王").defaultField("_all"); //全文查询
+//索引查看
+SearchResponse searchResponse = client.prepareSearch("test-migrate")
+              .setTypes("data")
+              .setSearchType(SearchType.DFS_QUERY_THEN_FETCH)
+              .setQuery(qb)
+              .setFrom(1)
+              .setSize(1)
+              .execute()
+              .actionGet();
+```
+
+[基于Http查询](https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search.html)
+
+```
+GET /twitter/_search?q=user:kimchy
+{
+    "user" : "kimchy",
+    "postDate" : "2009-11-15T14:12:12",
+    "message" : "trying out Elasticsearch"
+}
+```
+
+
+
+> [文章][http://elasticsearch.cn/article/]
+>
+> [中文文档][http://106.186.120.253/preview/search-lite.html]
+>
+> [官方文档][https://www.elastic.co/guide/en/elasticsearch/reference/5.2/search.html]
+>
+> [时区问题][https://discuss.elastic.co/t/elk-logstash-default-timezone-cause-index-splitting-problem-in-different-timezones/26615/8 ]
